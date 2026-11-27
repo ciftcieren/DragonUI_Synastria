@@ -77,15 +77,17 @@ local function goldGlow(tex, alpha)
     tex:SetGradientAlpha("HORIZONTAL", 1, 0.82, 0, alpha, 1, 0.82, 0, 0)
 end
 
--- A list row's hover (and LockHighlight selection) becomes the gold glow, sized to `area`.
+-- A list row's hover (and LockHighlight selection) becomes the gold glow, sized to `area`. The glow is
+-- a texture of its own in the HIGHLIGHT layer; the row's stock highlight is only made invisible and keeps
+-- its place, since some templates hang the row's text off it (ClassTrainerSkillButtonTemplate anchors
+-- its label to the highlight's right edge: moving it pushed every name a column to the right).
 local function rowGlow(button, area)
-    button:SetHighlightTexture(WHITE8, "ADD")
-    local hi = button:GetHighlightTexture()
-    if not hi then return end
-    goldGlow(hi, 0.22)
-    hi:ClearAllPoints()
-    hi:SetPoint("TOPLEFT", area or button, "TOPLEFT", -3, 1)
-    hi:SetPoint("BOTTOMRIGHT", area or button, "BOTTOMRIGHT", 3, -1)
+    local stock = button:GetHighlightTexture()
+    if stock then stock:SetAlpha(0) end
+    local glow = button:CreateTexture(nil, "HIGHLIGHT")
+    goldGlow(glow, 0.22)
+    glow:SetPoint("TOPLEFT", area or button, "TOPLEFT", -3, 1)
+    glow:SetPoint("BOTTOMRIGHT", area or button, "BOTTOMRIGHT", 3, -1)
 end
 
 -- SkillStatusBarTemplate rows (the perk list): no bar border, background or fill; the gold glow instead.
@@ -245,13 +247,22 @@ local ICONS = {
     down = { atlas = "minimal-scrollbar-arrow-bottom", glowAtlas = "minimal-scrollbar-arrow-bottom-over", scale = 0.8 },
 }
 
-local function plusIcon()
+-- DragonUI's Professions collapse glyphs, at their own sizes (plus 13x13, minus 13x4).
+local function profIcon(name, fallback)
     local P = NS.D.Professions
-    local entry = P and P.Atlas and P.Atlas["header-plus"]
+    local entry = P and P.Atlas and P.Atlas[name]
     if entry then
-        return { file = entry[1], size = 13, coords = { entry[4], entry[5], entry[6], entry[7] } }
+        return { file = entry[1], width = entry[2], height = entry[3], coords = { entry[4], entry[5], entry[6], entry[7] } }
     end
-    return { file = "Interface\\Buttons\\UI-PlusButton-Up", size = 16, coords = { 0, 1, 0, 1 } }
+    return { file = fallback, size = 16, coords = { 0, 1, 0, 1 } }
+end
+
+local function plusIcon()
+    return profIcon("header-plus", "Interface\\Buttons\\UI-PlusButton-Up")
+end
+
+local function minusIcon()
+    return profIcon("header-minus", "Interface\\Buttons\\UI-MinusButton-Up")
 end
 
 local function paintIcon(tex, icon, isGlow)
@@ -273,7 +284,7 @@ local function paintIcon(tex, icon, isGlow)
     tex:SetTexture(icon.file or (NS.D._dir .. icon.sheet))
     local c = isGlow and icon.glow or icon.coords
     tex:SetTexCoord(c[1], c[2], c[3], c[4])
-    tex:SetSize(icon.size, icon.size)
+    tex:SetSize(icon.width or icon.size, icon.height or icon.size)
     tex:SetBlendMode(isGlow and "ADD" or "BLEND")
     tex:SetAlpha(isGlow and (icon.glow == icon.coords and 0.5 or 1) or 1)
 end
@@ -284,6 +295,11 @@ local function applyIcon(button, path)
         icon = ICONS.up
     elseif button._dsynRole == "down" then
         icon = ICONS.down
+    elseif button._dsynRole == "fold" then
+        -- Category headers: minus while open, plus while folded.
+        path = type(path) == "string" and path:lower() or texPath(button:GetNormalTexture())
+        icon = path:find("plus") and plusIcon() or minusIcon()
+        icon.glow = icon.coords
     else
         path = type(path) == "string" and path:lower() or texPath(button:GetNormalTexture())
         if path:find("plus") then
@@ -301,13 +317,15 @@ local function applyIcon(button, path)
     paintIcon(button._dsynGlow, icon, true)
 end
 
-local function skinIconButton(button, role)
+-- x: where the icon's centre sits from the button's left edge (wide header rows); nil = button centre.
+local function skinIconButton(button, role, x)
     if not button or button._dsynRole then return end
     button._dsynRole = role
     button._dsynIcon = button:CreateTexture(nil, "ARTWORK")
-    button._dsynIcon:SetPoint("CENTER")
     button._dsynGlow = button:CreateTexture(nil, "HIGHLIGHT")
-    button._dsynGlow:SetPoint("CENTER")
+    for _, tex in ipairs({ button._dsynIcon, button._dsynGlow }) do
+        if x then tex:SetPoint("CENTER", button, "LEFT", x, 0) else tex:SetPoint("CENTER") end
+    end
     button._dsynCtl = true
     -- An error here would surface inside the server's own code and stop the rest of its row update.
     hooksecurefunc(button, "SetNormalTexture", function(self, path)
@@ -355,6 +373,9 @@ local function skinControls(window, parent, depth, inList)
             elseif kind == "Button" and isHeader(child) then
                 child._dsynCtl = true
                 skinHeader(child)
+                -- The template's own +/- sits 3px in, 16px wide: the glyph takes its centre.
+                skinIconButton(child, "fold", 11)
+                child._dsynCtl = true
             elseif kind == "Button" and inList and not _G[cname .. "IconTexture"] and not _G[cname .. "Icon"] then
                 -- A row-shaped button inside a list: gold hover/selection glow.
                 local w, h = child:GetWidth(), child:GetHeight()

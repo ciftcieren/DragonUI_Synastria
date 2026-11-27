@@ -1,0 +1,11 @@
+# Text files are stored with LF in the repository; checkouts use the platform's line endings.
+* text=auto
+
+*.lua text
+*.toc text
+*.md text
+
+*.png binary
+*.jpg binary
+*.blp binary
+*.tga binary
