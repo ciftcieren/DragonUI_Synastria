@@ -1,0 +1,33 @@
+## Interface: 30300
+## Title: |cff1784d1DragonUI|r Synastria
+## Notes: Fits Synastria's server windows and Scoots' addons into DragonUI. Settings: DragonUI options > Synastria tab. /dsyn
+## Author: ciftcieren
+## Version: 1.0.0
+## Dependencies: DragonUI
+## OptionalDeps: ScootsVendor, ScootsCraft, ScootsProgressBar
+## SavedVariables: DragonUI_SynastriaDB
+
+Core.lua
+Kit.lua
+AttuneBar.lua
+Finder.lua
+ItemHunt.lua
+ServerWindows.lua
+CompanionSkin.lua
+ProfFilters.lua
+CharStats.lua
+Perks.lua
+TrackerGroups.lua
+TrackerScroll.lua
+QuestLogMap.lua
+BagAttune.lua
+AttuneToast.lua
+BagsterSets.lua
+BagsterButtons.lua
+TalentTabs.lua
+StanceExtra.lua
+BossExtra.lua
+ScootsVendor.lua
+ScootsCraft.lua
+ProgressBars.lua
+Options.lua
